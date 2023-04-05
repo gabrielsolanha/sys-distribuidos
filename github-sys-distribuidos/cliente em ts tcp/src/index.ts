@@ -16,7 +16,7 @@ socket.on("open", () => {
 });
 
 socket.on("message", (data) => {
-  console.log(data);
+  console.log(data.toString());
 });
 
 socket.on("close", () => {

@@ -5,30 +5,31 @@ const PORT = 3000;
 
 const questions = [
   {
-    question: "What is the capital of France?",
-    answer: "Paris",
+    question: "Qual a capital da França?\nA)Brasilia\nB)Paris\nC)Fraiburgo\nD)Lion",
+    answer: "b",
   },
   {
-    question: "What is the capital of Germany?",
-    answer: "Berlin",
+    question: "Qual a capital da Alemanha?\nA)Noronha\nB)Berlim\nC)Fraiburgo\nD)Stuttgard",
+    answer: "b",
   },
   {
-    question: "What is the capital of Italy?",
-    answer: "Rome",
+    question: "Qual a capital da Itália?\nA)Piratuba\nB)Roma\nC)Fraiburgo\nD)Milão",
+    answer: "b",
   },
 ];
 
 function handleClient(ws: WebSocket) {
   let currentQuestionIndex = 0;
+  let nota = 10;
 
-  ws.send("Welcome to the WebSocket Quiz Server!");
-  ws.send("Type 'quit' anytime to exit.");
+  ws.send("Bem vindo ao Quiz!");
+  ws.send("Digite 'sair' para sair a qualquer hora.");
 
   function askQuestion() {
     if (currentQuestionIndex < questions.length) {
       ws.send(`Question: ${questions[currentQuestionIndex].question}`);
     } else {
-      ws.send("Congratulations! You have completed the quiz.");
+      ws.send("Parabens! Você completou o quiz.\nSua nota ficou: " + nota + "pontos");
       ws.close();
     }
   }
@@ -38,7 +39,7 @@ function handleClient(ws: WebSocket) {
   ws.on("message", (message: { toString: () => string; }) => {
     const answer = message.toString().trim();
 
-    if (answer.toLowerCase() === "quit") {
+    if (answer.toLowerCase() === "sair") {
       ws.send("Goodbye!");
       ws.close();
       return;
@@ -50,6 +51,7 @@ function handleClient(ws: WebSocket) {
       askQuestion();
     } else {
       ws.send("Incorrect. Try again!");
+      nota = nota > 0 ? nota-- : 0;
     }
   });
 }
