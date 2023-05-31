@@ -181,7 +181,7 @@ pyrightconfig.json
 
 *.swp
 *.*~
-project.lock.json
+*lock.json
 .DS_Store
 *.pyc
 
