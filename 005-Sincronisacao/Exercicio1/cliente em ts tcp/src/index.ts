@@ -7,8 +7,6 @@ const HOST = "ws://localhost";
 const socket = new WebSocket(`${HOST}:${PORT}`);
 
 socket.on("open", () => {
-  console.log("Digite o numero para sync.");
-
   process.stdin.on("data", (data) => {
     const message = Number(data.toString().trim());
     if (message) socket.send(message.toString());
@@ -27,3 +25,4 @@ socket.on("close", () => {
 socket.on("error", (err) => {
   console.error("WebSocket error:", err);
 });
+

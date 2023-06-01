@@ -4,8 +4,8 @@ import WebSocket from "ws";
 const PORT = 3000;
 
 var numSync = 1012;
-var arrNumSync: Array<number> = [];
-function handleClient(ws: WebSocket) {
+var arrNumSync: Array<any> = [];
+function handleClient(ws: WebSocket, request: any) {
   ws.send("Sincronizador conectado!");
 
   ws.on("message", (message: { toString: () => string }) => {
@@ -14,12 +14,15 @@ function handleClient(ws: WebSocket) {
   });
   process.stdin.on("data", (data) => {
     const message = data.toString().trim();
-    if (message == "s") {
+    if (message == "sync") {
       const calc = arrNumSync.reduce(
-        (accumulator: number, currentValue: number) => accumulator + currentValue
+        (accumulator: any, currentValue: any) => accumulator + currentValue
       );
       ws.send((calc / arrNumSync.length).toString());
-      ws.close()
+      arrNumSync = [numSync]
+    }
+    if (message == "hora") {
+      ws.send("Favor mandar a hora:");
     }
   });
 }
@@ -29,5 +32,5 @@ const server = new WebSocket.Server({ port: PORT });
 server.on("connection", handleClient);
 
 console.log(`WebSocket Server is running on port ${PORT}`);
-console.log(`Deseja realisar a sync?s/n`);
+console.log(`Type "hora" to request the hour and type "sync" to sync`);
 arrNumSync.push(numSync);
