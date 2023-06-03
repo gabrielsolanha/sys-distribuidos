@@ -1,36 +1,25 @@
-// src/ws_quiz_server.ts
-import WebSocket from "ws";
+import { Server, Socket } from 'net';
 
-const PORT = 3000;
-
-var numSync = 1012;
-var arrNumSync: Array<any> = [];
-function handleClient(ws: WebSocket, request: any) {
-  ws.send("Sincronizador conectado!");
-
-  ws.on("message", (message: { toString: () => string }) => {
-    const answer = Number(message.toString().trim());
-    arrNumSync.push(answer);
-  });
-  process.stdin.on("data", (data) => {
-    const message = data.toString().trim();
-    if (message == "sync") {
-      const calc = arrNumSync.reduce(
-        (accumulator: any, currentValue: any) => accumulator + currentValue
-      );
-      ws.send((calc / arrNumSync.length).toString());
-      arrNumSync = [numSync]
+class TimeDaemon {
+    server: Server;
+    constructor(public host: string, public port: number) {
+        this.server = new Server();
+        this.server.on('connection', (socket: Socket) => {
+            setInterval(() => {
+                socket.write('send_time');
+                socket.on('data', (data: Buffer) => {
+                    const TempoCliente = Number(data.toString());
+                    const TempoAtual = Date.now() / 1000;
+                    const ajuste = TempoAtual - TempoCliente;
+                    socket.write(ajuste.toString());
+                    console.log(`Ajustado relógio do cliente ${socket.remoteAddress}:${socket.remotePort} de ${new Date(TempoCliente * 1000)} para ${new Date(TempoAtual * 1000)}`);
+                });
+            }, 30000);
+        });
+        this.server.listen(this.port, this.host, () => {
+            console.log(`Servidor rodando no endereço: ${this.host}:${this.port}.`);
+        });
     }
-    if (message == "hora") {
-      ws.send("Favor mandar a hora:");
-    }
-  });
 }
 
-const server = new WebSocket.Server({ port: PORT });
-
-server.on("connection", handleClient);
-
-console.log(`WebSocket Server is running on port ${PORT}`);
-console.log(`Type "hora" to request the hour and type "sync" to sync`);
-arrNumSync.push(numSync);
+const timeDaemon = new TimeDaemon('localhost', 12345);
