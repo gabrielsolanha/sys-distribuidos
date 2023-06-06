@@ -1,91 +1,112 @@
-import path from 'path'
-import * as grpc from '@grpc/grpc-js'
-import * as protoLoader from '@grpc/proto-loader'
-import {ProtoGrpcType} from './proto/random'
-import readline from 'readline'
+import path from "path";
+import * as grpc from "@grpc/grpc-js";
+import * as protoLoader from "@grpc/proto-loader";
+import { ProtoGrpcType } from "./proto/bingo";
+import readline from "readline";
 
-const PORT = 8082
-const PROTO_FILE = './proto/random.proto'
+const PORT = 50051;
+const PROTO_FILE = "./proto/bingo.proto";
 
-const packageDef = protoLoader.loadSync(path.resolve(__dirname, PROTO_FILE))
-const grpcObj = (grpc.loadPackageDefinition(packageDef) as unknown) as ProtoGrpcType
+const packageDef = protoLoader.loadSync(path.resolve(__dirname, PROTO_FILE));
+const grpcObj = grpc.loadPackageDefinition(
+  packageDef
+) as unknown as ProtoGrpcType;
 
-
-const client = new grpcObj.randomPackage.Random(
-  `0.0.0.0:${PORT}`, grpc.credentials.createInsecure()
-)
-
-const deadline = new Date()
-deadline.setSeconds(deadline.getSeconds() + 5)
+const client = new grpcObj.Bingo(
+  `127.0.0.1:${PORT}`,
+  grpc.credentials.createInsecure()
+);
+var stage = 0;
+var myToken = "";
+var myUserName = "";
+var myCard = [0];
+var sortedNubers: number[] = [];
+const deadline = new Date();
+deadline.setSeconds(deadline.getSeconds() + 5);
 client.waitForReady(deadline, (err) => {
   if (err) {
-    console.error(err)
-    return
+    console.error(err);
+    return;
   }
-  onClientReady()
-})
-
+  onClientReady();
+});
 
 function onClientReady() {
-  client.PingPong({message: "Ping"}, (err, result) => {
-    if (err) {
-      console.error(err)
-      return
+  process.stdin.on("data", (data) => {
+    if (stage == 0) {
+      myUserName = data.toString().replace("\r\n", "");
+      const login = client.Login({ username: myUserName });
+      console.log("0000000000");
+
+      login.on("data", (chunk) => {
+        if (stage == 0 && chunk.status == 0) {
+          console.log(chunk);
+          myToken = chunk.token;
+          console.log(chunk.message + "\nDo u wanna start?y/n");
+          stage = 1;
+        } else if (chunk.status == 1) {
+          console.log(chunk.message + "\nRetype another:");
+        }
+      });
+    } else if (stage == 1) {
+      client.Ready({ token: myToken, username: myUserName }, (err, result) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+        console.log(result.message);
+        console.log("Your card is:");
+        myCard = result.card;
+        console.log(myCard);
+        console.log(typeof myCard);
+        stage = 2;
+        const play = client.Play({ token: myToken, username: myUserName });
+        play.on("data", (chunk) => {
+          if (chunk.status == 0) {
+            console.log("The number is:" + chunk.number);
+            sortedNubers.push(chunk.number);
+            console.log("The sorted numbers that u saw are:");
+            console.log(sortedNubers);
+            console.log("Yours numbers are: ");
+            printCard(myCard);
+            console.log(
+              "Are u the winner? (Do not respons if the response is not)"
+            );
+          } else {
+            console.log(chunk.message);
+            console.log("Winner:" + chunk.winner);
+          }
+          //console.log(chunk);
+        });
+      });
+    } else if (stage == 2) {
+      if (data.toString().replace("\r\n", "") == "y") {
+        console.log("****************************");
+        console.log("Checking...");
+        console.log("****************************");
+        client.CheckWin(
+          { token: myToken, username: myUserName },
+          (err, result) => {
+            if (err) {
+              console.error(err);
+              return;
+            }
+            console.log(result?.message);
+          }
+        );
+      }
     }
-    console.log(result)
-  })
-
-  const stream1 = client.RandomNumbers({maxVal: 85})
-  stream1.on("data", (chunk)=> {
-    console.log(chunk)
-  })
-  stream1.on("end", () => {
-    console.log("communication ended")
-  })
-
-  const stream2 = client.TodoList((err, result) => {
-    if (err) {
-      console.error(err)
-      return
-    }
-    console.log(result)
-  })
-  stream2.write({todo: "walk the wife", status: "Never"})
-  stream2.write({todo: "walk the dog", status: "Doing"})
-  stream2.write({todo: "get a real job", status: "Impossible"})
-  stream2.write({todo: "feed the dog", status: "Done"})
-  stream2.end()
-
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  })
-
-  const username = process.argv[2]
-  if (!username) console.error("No username, can't join chat"), process.exit()
-
-
-  const metadata = new grpc.Metadata()
-  metadata.set("username", username)
-  const call = client.Chat(metadata)
-  
-  call.write({
-    message: "register"
-  })
-
-  call.on("data", (chunk) => {
-    console.log(`${chunk.username} ==> ${chunk.message}`)
-  })
-
-  rl.on("line", (line) => {
-    if(line === "quit") {
-      call.end()
-    }else {
-      call.write({
-        message: line
-      })
-    }
-
-  })
+  });
 }
 
+const printCard = (card: number[]) => {
+  let card2D = [
+    card.slice(0, 5),
+    card.slice(5, 10),
+    [...card.slice(10, 12), "😎", ...card.slice(12, 14)],
+    card.slice(14, 19),
+    card.slice(19, 24),
+  ];
+  console.log(card2D);
+};
+console.log("Digite seu nome:")
